@@ -52,6 +52,7 @@ provide more top-level type signatures, especially when learning Haskell.
 {-# LANGUAGE InstanceSigs #-}
 
 module Chapter3 where
+import Data.Maybe (fromMaybe, isNothing)
 
 {-
 =🛡= Types in Haskell
@@ -344,6 +345,14 @@ of a book, but you are not limited only by the book properties we described.
 Create your own book type of your dreams!
 -}
 
+
+data Book = MkBook
+  { name :: String
+  , author :: String
+  , cover :: String
+  , pages :: Int
+  } deriving (Show)
+
 {- |
 =⚔️= Task 2
 
@@ -374,6 +383,35 @@ after the fight. The battle has the following possible outcomes:
 
 ♫ NOTE: In this task, you need to implement only a single round of the fight.
 
+-}
+
+data Knight = MkKnight
+  { knightHealth :: Int
+  , knightAttack :: Int
+  , knightGold   :: Int
+  } deriving (Show)
+
+data Monster = MkMonster
+  { monsterHealth :: Int
+  , monsterAttack :: Int
+  , monsterGold :: Int
+  } deriving (Show)
+
+fightFunc :: Knight -> Monster -> Int
+fightFunc k _ = knightGold k
+
+{-
+
+The difference between let and where
+
+square :: Int -> Int
+square x = let y = x * x in y
+
+square x = y
+   where y = x * x
+  
+let is often used when the bindings are closely related to the expression being evaluated,
+and where is often used when the bindings are more general and apply to the entire function.
 -}
 
 {- |
@@ -462,6 +500,8 @@ Create a simple enumeration for the meal types (e.g. breakfast). The one who
 comes up with the most number of names wins the challenge. Use your creativity!
 -}
 
+data Meal = Breakfast String | Brunch String | Lunch String | Dinner String
+
 {- |
 =⚔️= Task 4
 
@@ -481,6 +521,43 @@ After defining the city, implement the following functions:
    complicated task, walls can be built only if the city has a castle
    and at least 10 living __people__ inside in all houses of the city in total.
 -}
+
+newtype Castle = Castle { castleName :: String }
+data Wall = Wall
+data Church = Church
+data Library = Library
+newtype House = House { people :: Int}
+
+data City = MkCity {
+  castle :: Maybe Castle,
+  wall :: Maybe Wall,
+  church :: Maybe Church,
+  library :: Maybe Library,
+  houses :: [House]
+}
+
+buildCastle :: Maybe String -> City -> City
+buildCastle newName city = city {castle = Just (Castle (fromMaybe "" newName))}
+
+{-
+Just is used to create a value of type 'Maybe a'.
+The 'Maybe' type is used to represent optional values, and it has two constructors: Just and Nothing.
+
+fromMaybe takes two arguments: a default value and a Maybe value.
+If the 'Maybe' value is 'Just x', where 'x' is some value, 'fromMaybe' returns 'x'. 
+If the 'Maybe' value is 'Nothing', 'fromMaybe' returns the default value.
+
+It's similar to the unwrap_or function in Rust.
+-}
+
+buildHouse :: Int -> City -> City
+buildHouse numPeople city = city { houses = House numPeople : houses city}
+
+buildWalls :: City -> Maybe City
+buildWalls city
+  | isNothing (castle city) || totalPeople < 10 = Nothing
+  | otherwise = Just (city {wall = Just Wall})
+  where totalPeople = sum (map people (houses city))
 
 {-
 =🛡= Newtypes
@@ -562,22 +639,31 @@ introducing extra newtypes.
 🕯 HINT: if you complete this task properly, you don't need to change the
     implementation of the "hitPlayer" function at all!
 -}
+
+newtype Attack = MkAttack { attackVal :: Int}
+newtype Strength = MkStrength { strenghVal :: Int }
+newtype Armor = MkArmor {armorVal::Int}
+newtype Dexterity = MkDexterity {dexterityVal :: Int}
+newtype Health = MkHealth {healthVal :: Int}
+newtype Damage = MkDamage {damageVal :: Int}
+newtype Defence = MkDefence {defenceVal :: Int}
+
 data Player = Player
-    { playerHealth    :: Int
-    , playerArmor     :: Int
-    , playerAttack    :: Int
-    , playerDexterity :: Int
-    , playerStrength  :: Int
+    { playerHealth    :: Health
+    , playerArmor     :: Armor
+    , playerAttack    :: Attack
+    , playerDexterity :: Dexterity
+    , playerStrength  :: Strength
     }
 
-calculatePlayerDamage :: Int -> Int -> Int
-calculatePlayerDamage attack strength = attack + strength
+calculatePlayerDamage :: Attack -> Strength -> Damage
+calculatePlayerDamage attack strength = MkDamage {damageVal=attackVal attack - strenghVal strength}
 
-calculatePlayerDefense :: Int -> Int -> Int
-calculatePlayerDefense armor dexterity = armor * dexterity
+calculatePlayerDefense :: Armor -> Dexterity -> Defence
+calculatePlayerDefense armor dexterity = MkDefence {defenceVal=armorVal armor * dexterityVal dexterity}
 
-calculatePlayerHit :: Int -> Int -> Int -> Int
-calculatePlayerHit damage defense health = health + defense - damage
+calculatePlayerHit :: Damage -> Defence -> Health -> Health
+calculatePlayerHit damage defense health = MkHealth {healthVal = healthVal health + defenceVal defense - damageVal damage}
 
 -- The second player hits first player and the new first player is returned
 hitPlayer :: Player -> Player -> Player
@@ -755,6 +841,19 @@ parametrise data types in places where values can be of any general type.
   maybe-treasure ;)
 -}
 
+data TreasureChest x = TreasureChest
+    { treasureChestGold :: Int
+    , treasureChestLoot :: x
+    }
+
+newtype Dragon p = Dragon
+  {magicPower :: p}
+
+data Lair p x =  Lair
+  { dragon :: Dragon p
+  , treasureChest :: Maybe (TreasureChest x)
+  }
+
 {-
 =🛡= Typeclasses
 
@@ -912,6 +1011,22 @@ Implement instances of "Append" for the following types:
 class Append a where
     append :: a -> a -> a
 
+newtype Gold = Gold { getGold :: Int }
+
+instance Append Gold where
+  append :: Gold -> Gold -> Gold
+  append (Gold x) (Gold y) = Gold (x + y)
+
+instance  Append [a] where
+  append :: [a] -> [a] -> [a]
+  append = (++)
+
+instance Append a => Append (Maybe a) where
+    append :: Maybe a -> Maybe a -> Maybe a
+    append Nothing x = x
+    append x Nothing = x
+    append (Just x) (Just y) = Just (append x y)
+
 
 {-
 =🛡= Standard Typeclasses and Deriving
@@ -973,6 +1088,28 @@ implement the following functions:
 🕯 HINT: to implement this task, derive some standard typeclasses
 -}
 
+data Day = Monday | Tuesday | Wednesday | Thursday | Friday | Saturday | Sunday
+           deriving (Eq, Ord, Show, Read, Bounded, Enum)
+
+isWeekend :: Day -> Bool
+isWeekend day
+  | day >= Saturday = True
+  | otherwise = False
+
+nextDay :: Day -> Day
+nextDay day
+  | day /= Sunday = succ day
+  | otherwise = Monday
+
+daysToPary :: Day -> Int
+daysToPary Monday = 4
+daysToPary Tuesday = 3
+daysToPary Wednesday = 2
+daysToPary Thursday = 1
+daysToPary Friday = 0
+daysToPary Saturday = 6
+daysToPary Sunday = 7
+
 {-
 =💣= Task 9*
 
@@ -1008,6 +1145,45 @@ Implement data types and typeclasses, describing such a battle between two
 contestants, and write a function that decides the outcome of a fight!
 -}
 
+data Action
+  = Attack
+  | DrinkHealthPotion
+  | CastDefenceSpell
+  | RunAway
+  deriving (Show, Eq)
+
+data Fighter
+  = Knight { health :: Int, attackPower :: Int, defence :: Int, actions :: [Action] }
+  | Monster { health :: Int, attackPower :: Int, actions :: [Action] }
+  deriving (Show)
+
+performAction :: Fighter -> Fighter -> Action -> Fighter
+performAction attacker@Knight {} defender@Monster{} Attack =
+  defender { health = health defender - max 0 (attackPower attacker) }
+performAction attacker@Monster{} defender@Knight {} Attack =
+  defender { health = health defender - max 0 (attackPower attacker - defence defender) }
+performAction knight@Knight{} _ DrinkHealthPotion =
+  knight { health = health knight + 10 }
+performAction knight@Knight{} _ CastDefenceSpell =
+  knight { defence = defence knight + 5 }
+performAction monster@Monster{} _ RunAway =
+  monster { health = 0 }
+performAction _ _ _ = error "Invalid action"
+
+fight :: Fighter -> Fighter -> Fighter
+fight = battle
+  where
+    battle f1 f2
+      | health f1 <= 0 = f2
+      | health f2 <= 0 = f1
+      | otherwise =
+          let a1 = head (actions f1)
+              a2 = head (actions f2)
+              as1 = tail (actions f1) ++ [a1]
+              as2 = tail (actions f2) ++ [a2]
+              f1' = performAction f1 f2 a1
+              f2' = performAction f2 f1 a2
+          in battle (f1 { actions = as1, health = health f1' }) (f2 { actions = as2, health = health f2' })
 
 {-
 You did it! Now it is time to open pull request with your changes
